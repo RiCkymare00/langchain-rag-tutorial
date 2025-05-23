@@ -7,6 +7,8 @@ from langchain.prompts import ChatPromptTemplate
 
 CHROMA_PATH = "chroma"
 
+CHAT_MODEL      = "gpt-4.1-nano"
+
 PROMPT_TEMPLATE = """
 Answer the question based only on the following context:
 
@@ -40,7 +42,9 @@ def main():
     prompt = prompt_template.format(context=context_text, question=query_text)
     print(prompt)
 
-    model = ChatOpenAI()
+    model = ChatOpenAI(
+        model_name=CHAT_MODEL
+    )
     response_text = model.predict(prompt)
 
     sources = [doc.metadata.get("source", None) for doc, _score in results]

@@ -19,6 +19,7 @@ openai.api_key = os.environ['OPENAI_API_KEY']
 
 CHROMA_PATH = "chroma"
 DATA_PATH = "data/books"
+SUPPORTED_GLOBS = ["*.md", "*.pdf", "*.txt", "*.html", "*.docx"]
 
 
 def main():
@@ -32,9 +33,15 @@ def generate_data_store():
 
 
 def load_documents():
-    loader = DirectoryLoader(DATA_PATH, glob="*.md")
-    documents = loader.load()
-    return documents
+    all_docs: list[Document] = []
+    for pattern in SUPPORTED_GLOBS:
+        loader = DirectoryLoader(DATA_PATH, glob=pattern)
+        try:
+            docs = loader.load()
+            all_docs.extend(docs)
+        except Exception as e:
+            print(f"Fail: '{pattern}': {e}")
+    return all_docs
 
 
 def split_text(documents: list[Document]):
@@ -46,11 +53,6 @@ def split_text(documents: list[Document]):
     )
     chunks = text_splitter.split_documents(documents)
     print(f"Split {len(documents)} documents into {len(chunks)} chunks.")
-
-    document = chunks[10]
-    print(document.page_content)
-    print(document.metadata)
-
     return chunks
 
 
@@ -60,8 +62,14 @@ def save_to_chroma(chunks: list[Document]):
         shutil.rmtree(CHROMA_PATH)
 
     # Create a new DB from the documents.
+    embeddings = OpenAIEmbeddings(
+                                  openai_proxy=None,
+                                  openai_api_key=openai.api_key
+                                  )
     db = Chroma.from_documents(
-        chunks, OpenAIEmbeddings(), persist_directory=CHROMA_PATH
+        chunks,
+        embeddings,
+        persist_directory=CHROMA_PATH
     )
     db.persist()
     print(f"Saved {len(chunks)} chunks to {CHROMA_PATH}.")
